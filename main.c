@@ -21,6 +21,10 @@ typedef struct Node {
     struct Node* right;
 } Node;
 
+typedef struct Tree {
+    struct Node* root;
+} Tree;
+
 typedef struct list_node {
     Node* node;            
     struct list_node* next;
@@ -60,6 +64,26 @@ Node* pop(list_stack* stack) {
     return node;
 }
 
+Node* create_pkg(int label, int width, int height) {
+    Node* new = (Node*) malloc(sizeof(Node));
+    assert(new != NULL);
+    new->label = label;
+    new->width = width;
+    new->height = height;
+    new->left = NULL;
+    new->right = NULL;
+    return new;
+}
+
+Node* create_cut(char cut, Node* left, Node* right) {
+    Node* new = (Node*) malloc(sizeof(Node));
+    assert(new != NULL);
+    new->cut = cut;
+    new->left = left;
+    new->right = right;
+    return new;
+}
+
 Node* read_in(FILE* file) {
     char line[50];
     list_stack stack = NULL;
@@ -84,12 +108,41 @@ Node* read_in(FILE* file) {
     return pop(&stack);
 }
 
-void preorder(Node* node) {
-    if (node == NULL) return;
-    if (node->cut == NULL) printf("%d(%d,&d)\n", node->label, node->width, node->height);
-    else printf("%c\n", node->cut);
-    preorder(node->left);
-    preorder(node->right);
+void preorder(Node* node, FILE* file) {
+    while (node != NULL) {
+        if (node->cut == NULL) printf("%d(%d,&d)\n", node->label, node->width, node->height);
+        else printf("%c\n", node->cut);
+        preorder(node->left, file);
+        node = node->right;
+    }
+    return;
+}
+
+void postorder(Node* node, FILE* file) {
+    while (node != NULL) {
+        postorder(node->left, file);
+        node = node->right;
+        if (node->cut == NULL) {
+            printf("%d(%d,&d)\n", node->label, node->width, node->height);
+        }
+        else {
+            int small_width;
+            int small_height;
+            if (node->cut == 'V') { // child nodes are side by side
+                small_width = node->left->width + node->right->width;
+                small_height = (node->left->height > node->right->height) ? node->left->height : node->right->height;
+            }
+            else { // child nodes on top of each other
+                small_width = (node->left->width > node->right->width) ? node->left->width : node->right->width;
+                small_height = node->left->height + node->right->height;
+            }
+            node->width = small_width;
+            node->height = small_height;
+
+            printf("%c(%d,%d)\n", node->cut, node->width, node->height);
+        }
+    }
+    return;
 }
 
 int main(int argc, char* argv[]) {
@@ -99,6 +152,24 @@ int main(int argc, char* argv[]) {
     assert(file != NULL);
 
     Node* node = read_in(file);
+    fclose(file);
+    Tree* tree = NULL;
+    tree->root = node;
+
+    // output file 1
+    FILE* out_1 = (FILE*) fopen(argv[2], "w");
+    preorder(tree->root, out_1);
+    fclose(out_1);
+
+    // output file 2
+    FILE* out_2 = (FILE*) fopen(argv[3], "w");
+    postorder(tree->root, out_2)
+    fclose(out_1);
+
+    // output file 3
+    FILE* out_3 = (FILE*) fopen(argv[4], "w");
+
+    fclose(out_1);
 
     return 0;
 }
