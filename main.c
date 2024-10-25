@@ -121,7 +121,7 @@ Tree* read_in(FILE* file) {
 
 void preorder(Node* node, FILE* file) {
     while (node != NULL) {
-        if (node->cut == NULL) printf("%d(%d,&d)\n", node->label, node->width, node->height);
+        if (node->cut == 0) printf("%d(%d,&d)\n", node->label, node->width, node->height);
         else printf("%c\n", node->cut);
         preorder(node->left, file);
         node = node->right;
@@ -133,9 +133,8 @@ void postorder(Node* node, FILE* file) {
     while (node != NULL) {
         postorder(node->left, file);
         node = node->right;
-        if (node->cut == NULL) {
+        if (node->cut == 0) // it's a pkg
             printf("%d(%d,&d)\n", node->label, node->width, node->height);
-        }
         else {
             int small_width;
             int small_height;
@@ -153,6 +152,30 @@ void postorder(Node* node, FILE* file) {
 
             printf("%c(%d,%d)\n", node->cut, node->width, node->height);
         }
+    }
+    return;
+}
+
+void get_corner(Node* node, FILE* file) {
+    int xcorner;
+    int ycorner;
+    while (node != NULL) {
+        postorder(node->left, file);
+        node = node->right;
+        if (node->cut == 0) {
+            
+            printf("%d((%d,&d)(%d,%d))\n", 
+            node->label, node->width, node->height, xcorner, ycorner);
+        }
+    }
+    return;
+}
+
+void free_postorder(Node* node) {
+    while (node != NULL) {
+        free_postorder(node->left);
+        node = node->right;
+        free(node);
     }
     return;
 }
@@ -187,7 +210,8 @@ int main(int argc, char* argv[]) {
     fclose(out_3);
 
     // free memory
-    free_postorder(tree);
+    free_preorder(tree->root);
+    free(tree);
 
     return 0;
 }
