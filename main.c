@@ -3,22 +3,7 @@
 #include <assert.h>
 #include <string.h>
 
-// declare fxns
-void insert_head(list_node* top, Node* node);
-void push(list_stack* stack, Node* node);
-void is_empty(list_node* top);
-void delete_head(list_stack* stack);
-Node* pop(list_stack* stack);
-Node* read_in(FILE* file);
-void preorder(Node* node, FILE* file);
-Node* create_pkg(int label, int width, int height);
-Node* create_cut(char cut, Node* left, Node* right);
-void free_stacklist(list_node* top);
-void postorder(Node* node, FILE* file);
-void get_corner(Node* node, int xc, int yc);
-void print_corner(Node* node, FILE* file);
-void free_postorder(Node* node);
-
+// define structs
 typedef struct Node {
     int label;
     int width;
@@ -43,8 +28,24 @@ typedef struct list_stack {
     struct list_node* top;
 } list_stack;
 
+// declare fxns
+void insert_head(list_stack* stack, Node* node);
+void push(list_stack* stack, Node* node);
+int is_empty(list_stack* stack);
+void delete_head(list_stack* stack);
+Node* pop(list_stack* stack);
+Tree* read_in(FILE* file);
+void preorder(Node* node, FILE* file);
+Node* create_pkg(int label, int width, int height);
+Node* create_cut(char cut, Node* left, Node* right);
+void free_stacklist(list_node* top);
+void postorder(Node* node, FILE* file);
+void get_corner(Node* node, int xc, int yc);
+void print_corner(Node* node, FILE* file);
+void free_postorder(Node* node);
 
-void insert_head(list_node* top, Node* node) {
+
+void insert_head(list_stack* stack, Node* node) {
     list_node* new = (list_node*) malloc(sizeof(list_node));
     new->node = node; // the new node is the node passed in
     new->next = stack->top; // new node points to current stack top
@@ -52,11 +53,11 @@ void insert_head(list_node* top, Node* node) {
 }
 
 void push(list_stack* stack, Node* node) {
-    insert_head(stack->top, node);    
+    insert_head(stack, node);    
 }
 
-int is_empty(list_node* top) {
-    return (top == NULL);
+int is_empty(list_stack* stack) {
+    return (stack->top == NULL);
 }
 
 void delete_head(list_stack* stack) {
@@ -66,7 +67,7 @@ void delete_head(list_stack* stack) {
 }
 
 Node* pop(list_stack* stack) {
-    assert(!is_empty(*(stack->top)));
+    assert(!is_empty(stack));
     Node* node = stack->top->node;
     delete_head(stack);
     return node;
@@ -98,12 +99,11 @@ Node* create_cut(char cut, Node* left, Node* right) {
 
 void free_stacklist(list_node* top) {
     list_node* current = top;
-    while (current != NULL) {
-        free(current);
-        top = top->next;
-        current = top;
-    }
-    return;
+    if (current == NULL) return;
+        
+    free(current);
+    top = top->next;
+    current = top;
 }
 
 Tree* read_in(FILE* file) {
@@ -151,7 +151,7 @@ void preorder(Node* node, FILE* file) {
 void postorder(Node* node, FILE* file) {
     if (node == NULL) return;
     postorder(node->left, file);
-    postorder(node->right; file);
+    postorder(node->right, file);
         if (node->cut == 0) // it's a pkg
             printf("%d(%d,&d)\n", node->label, node->width, node->height);
         else {
@@ -175,24 +175,25 @@ void postorder(Node* node, FILE* file) {
 }
 
 void get_corner(Node* node, int xc, int yc) {
-    while (node != NULL) {
-        if (node->cut == 'H') {
-            get_corner(node->right, xc, yc);
-            get_corner(node->left, xc, yc + node->right->height);
-            node->xcorner = xc;
-            node->ycorner = yc;
-        }
-        else if (node->cut == 'V') {
-            get_corner(node->left, xc, yc);
-            get_corner(node->right, xc + node->left->width, yc);
-            node->xcorner = xc;
-            node->ycorner = yc;
-        }
-        else {
-            node->xcorner = xc;
-            node->ycorner = yc;
-            return;
-        }
+    if (node == NULL) return;
+
+    if (node->cut == 'H') {
+        get_corner(node->right, xc, yc);
+        get_corner(node->left, xc, yc + node->right->height);
+        node->xcorner = xc;
+        node->ycorner = yc;
+    }
+    else if (node->cut == 'V') {
+        get_corner(node->left, xc, yc);
+        get_corner(node->right, xc + node->left->width, yc);
+        node->xcorner = xc;
+        node->ycorner = yc;
+    }
+    else {
+        node->xcorner = xc;
+        node->ycorner = yc;
+        return;
+    }
         // if (node->cut == 0) { // it's a pkg
         //     printf("%d((%d,&d)(%d,%d))\n", 
         //     node->label, node->width, node->height, xcorner, ycorner);
@@ -208,7 +209,6 @@ void get_corner(Node* node, int xc, int yc) {
         //         get_corner(node->right, file, xc, yc);
         //     }        
         // }    
-    }
     return;
 }
 
@@ -218,7 +218,7 @@ void print_corner(Node* node, FILE* file) {
     print_corner(node->left, file);
     print_corner(node->right, file);
     if (node->cut == 0)
-        printf("%d((%d,%d)(%d,%d))", node->label, node->width, node->height,
+        printf("%d((%d,%d)(%d,%d))\n", node->label, node->width, node->height,
         node->xcorner, node->ycorner);
 }
 void free_postorder(Node* node) {
@@ -234,8 +234,6 @@ int main(int argc, char* argv[]) {
     FILE* file = (FILE*) fopen(in_file, "r"); // open txt file
     assert(file != NULL);
 
-    Tree* tree = (Tree*) malloc(sizeof(Tree));
-    assert(tree != NULL);
     Tree* tree = read_in(file);
     fclose(file);
 
@@ -248,7 +246,7 @@ int main(int argc, char* argv[]) {
     // output file 2
     FILE* out_2 = (FILE*) fopen(argv[3], "w");
     assert(out_2 != NULL);
-    postorder(tree->root, out_2)
+    postorder(tree->root, out_2);
     fclose(out_2);
 
     // output file 3
