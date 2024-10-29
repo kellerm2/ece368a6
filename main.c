@@ -142,8 +142,8 @@ Tree* read_in(FILE* file) {
 void preorder(Node* node, FILE* file) {
     if (node == NULL) return;
         
-    if (node->cut == 0) printf("%d(%d,&d)\n", node->label, node->width, node->height);
-    else printf("%c\n", node->cut);
+    if (node->cut == 0) fprintf(file, "%d(%d,%d)\n", node->label, node->width, node->height);
+    else fprintf(file, "%c\n", node->cut);
     preorder(node->left, file);
     preorder(node->right, file);
 }
@@ -153,10 +153,10 @@ void postorder(Node* node, FILE* file) {
     postorder(node->left, file);
     postorder(node->right, file);
         if (node->cut == 0) // it's a pkg
-            printf("%d(%d,&d)\n", node->label, node->width, node->height);
+            fprintf(file, "%d(%d,%d)\n", node->label, node->width, node->height);
         else {
-            int small_width;
-            int small_height;
+            int small_width = 0;
+            int small_height = 0;
             switch (node->cut) {
             case 'V': // child nodes are side by side
                 small_width = node->left->width + node->right->width; // width is sum of widths
@@ -169,7 +169,7 @@ void postorder(Node* node, FILE* file) {
             node->width = small_width; // update cut node's new width, height
             node->height = small_height;
 
-            printf("%c(%d,%d)\n", node->cut, node->width, node->height);
+            fprintf(file, "%c(%d,%d)\n", node->cut, node->width, node->height);
         }
     return;
 }
@@ -218,7 +218,7 @@ void print_corner(Node* node, FILE* file) {
     print_corner(node->left, file);
     print_corner(node->right, file);
     if (node->cut == 0)
-        printf("%d((%d,%d)(%d,%d))\n", node->label, node->width, node->height,
+        fprintf(file, "%d((%d,%d)(%d,%d))\n", node->label, node->width, node->height,
         node->xcorner, node->ycorner);
 }
 void free_postorder(Node* node) {
