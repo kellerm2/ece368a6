@@ -4,13 +4,20 @@
 #include <string.h>
 
 // declare fxns
-void insert_head(list_node* list, Node* node);
+void insert_head(list_node* top, Node* node);
 void push(list_stack* stack, Node* node);
-void is_empty(list_node* list);
+void is_empty(list_node* top);
 void delete_head(list_stack* stack);
 Node* pop(list_stack* stack);
 Node* read_in(FILE* file);
-void preorder(Node* node);
+void preorder(Node* node, FILE* file);
+Node* create_pkg(int label, int width, int height);
+Node* create_cut(char cut, Node* left, Node* right);
+void free_stacklist(list_node* top);
+void postorder(Node* node, FILE* file);
+void get_corner(Node* node, int xc, int yc);
+void print_corner(Node* node, FILE* file);
+void free_postorder(Node* node);
 
 typedef struct Node {
     int label;
@@ -19,6 +26,8 @@ typedef struct Node {
     char cut;
     struct Node* left;
     struct Node* right;
+    int xcorner;
+    int ycorner;
 } Node;
 
 typedef struct Tree {
@@ -87,6 +96,16 @@ Node* create_cut(char cut, Node* left, Node* right) {
     return new;
 }
 
+void free_stacklist(list_node* top) {
+    list_node* current = top;
+    while (current != NULL) {
+        free(current);
+        top = top->next;
+        current = top;
+    }
+    return;
+}
+
 Tree* read_in(FILE* file) {
     char line[25];
     list_stack* stack = (list_stack*) malloc(sizeof(list_stack));
@@ -115,24 +134,24 @@ Tree* read_in(FILE* file) {
     }
 
     tree->root = pop(stack); // first to pop is root of tree bc postorder
+    free_stacklist(stack->top);
     free(stack);
     return tree;
 }
 
 void preorder(Node* node, FILE* file) {
-    while (node != NULL) {
-        if (node->cut == 0) printf("%d(%d,&d)\n", node->label, node->width, node->height);
-        else printf("%c\n", node->cut);
-        preorder(node->left, file);
-        node = node->right;
-    }
-    return;
+    if (node == NULL) return;
+        
+    if (node->cut == 0) printf("%d(%d,&d)\n", node->label, node->width, node->height);
+    else printf("%c\n", node->cut);
+    preorder(node->left, file);
+    preorder(node->right, file);
 }
 
 void postorder(Node* node, FILE* file) {
-    while (node != NULL) {
-        postorder(node->left, file);
-        node = node->right;
+    if (node == NULL) return;
+    postorder(node->left, file);
+    postorder(node->right; file);
         if (node->cut == 0) // it's a pkg
             printf("%d(%d,&d)\n", node->label, node->width, node->height);
         else {
@@ -152,32 +171,61 @@ void postorder(Node* node, FILE* file) {
 
             printf("%c(%d,%d)\n", node->cut, node->width, node->height);
         }
-    }
     return;
 }
 
-void get_corner(Node* node, FILE* file) {
-    int xcorner;
-    int ycorner;
+void get_corner(Node* node, int xc, int yc) {
     while (node != NULL) {
-        postorder(node->left, file);
-        node = node->right;
-        if (node->cut == 0) {
-            
-            printf("%d((%d,&d)(%d,%d))\n", 
-            node->label, node->width, node->height, xcorner, ycorner);
+        if (node->cut == 'H') {
+            get_corner(node->right, xc, yc);
+            get_corner(node->left, xc, yc + node->right->height);
+            node->xcorner = xc;
+            node->ycorner = yc;
         }
+        else if (node->cut == 'V') {
+            get_corner(node->left, xc, yc);
+            get_corner(node->right, xc + node->left->width, yc);
+            node->xcorner = xc;
+            node->ycorner = yc;
+        }
+        else {
+            node->xcorner = xc;
+            node->ycorner = yc;
+            return;
+        }
+        // if (node->cut == 0) { // it's a pkg
+        //     printf("%d((%d,&d)(%d,%d))\n", 
+        //     node->label, node->width, node->height, xcorner, ycorner);
+        // }
+        // else {
+        //     switch (node->cut) {
+        //     case 'V':
+        //         get_corner(node->left, file, xc, yc);
+        //         get_corner(node->right, file, xc + node->left->width, yc);
+        //         break;
+        //     case 'H':
+        //         get_corner(node->left, file, xc, yc + node->right->height);
+        //         get_corner(node->right, file, xc, yc);
+        //     }        
+        // }    
     }
     return;
 }
 
+void print_corner(Node* node, FILE* file) {
+    if (node == NULL) return;
+        
+    print_corner(node->left, file);
+    print_corner(node->right, file);
+    if (node->cut == 0)
+        printf("%d((%d,%d)(%d,%d))", node->label, node->width, node->height,
+        node->xcorner, node->ycorner);
+}
 void free_postorder(Node* node) {
-    while (node != NULL) {
-        free_postorder(node->left);
-        node = node->right;
-        free(node);
-    }
-    return;
+    if (node == NULL) return;
+    free_postorder(node->left);
+    free_postorder(node->right);
+    free(node);
 }
 
 int main(int argc, char* argv[]) {
@@ -206,11 +254,14 @@ int main(int argc, char* argv[]) {
     // output file 3
     FILE* out_3 = (FILE*) fopen(argv[4], "w");
     assert(out_3 != NULL);
-    get_corner(tree->root, out_3)
+    int xc = 0;
+    int yc = 0;
+    get_corner(tree->root, xc, yc);
+    print_corner(tree->root, out_3);
     fclose(out_3);
 
     // free memory
-    free_preorder(tree->root);
+    free_postorder(tree->root);
     free(tree);
 
     return 0;
