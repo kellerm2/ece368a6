@@ -44,35 +44,35 @@ void get_corner(Node* node, int xc, int yc);
 void print_corner(Node* node, FILE* file);
 void free_postorder(Node* node);
 
-
+// inserts node on top of the tree assembly stack, in junction with push
 void insert_head(list_stack* stack, Node* node) {
     list_node* new = (list_node*) malloc(sizeof(list_node));
     new->node = node; // the new node is the node passed in
     new->next = stack->top; // new node points to current stack top
     stack->top = new; // new is pushed to stack top
 }
-
+// pushs a node onto the tree assembly stack
 void push(list_stack* stack, Node* node) {
     insert_head(stack, node);    
 }
-
+// checks if the tree assembly stack is empty
 int is_empty(list_stack* stack) {
     return (stack->top == NULL);
 }
-
+// deletes the head of the stack for assembly of the package/cut tree
 void delete_head(list_stack* stack) {
     list_node* head = stack->top;
     stack->top = head->next;
     free(head);
 }
-
+// pops off node from tree assembly stack, used with is_empty and delete_head
 Node* pop(list_stack* stack) {
     assert(!is_empty(stack));
     Node* node = stack->top->node;
     delete_head(stack);
     return node;
 }
-
+// creates a node type to designate a package with package characteristics
 Node* create_pkg(int label, int width, int height) {
     Node* new = (Node*) malloc(sizeof(Node));
     assert(new != NULL);
@@ -84,7 +84,7 @@ Node* create_pkg(int label, int width, int height) {
     new->cut = 0; // represents NUL char
     return new;
 }
-
+// creates a node type to designate a horizontal or vertical cutline
 Node* create_cut(char cut, Node* left, Node* right) {
     Node* new = (Node*) malloc(sizeof(Node));
     assert(new != NULL);
@@ -96,7 +96,7 @@ Node* create_cut(char cut, Node* left, Node* right) {
     new->height = -1;
     return new;
 }
-
+// frees list nodes of the stack used to assemble the tree
 void free_stacklist(list_node* top) {
     list_node* current = top;
     if (current == NULL) return;
@@ -105,7 +105,7 @@ void free_stacklist(list_node* top) {
     top = top->next;
     current = top;
 }
-
+// reads in the input file, creates node for packages and cuts, and uses a stack to assemble the postorder traversal into a tree
 Tree* read_in(FILE* file) {
     char line[25];
     list_stack* stack = (list_stack*) malloc(sizeof(list_stack));
@@ -138,7 +138,7 @@ Tree* read_in(FILE* file) {
     free(stack);
     return tree;
 }
-
+// prints out the nodes of the tree in preorder traversal O(n)
 void preorder(Node* node, FILE* file) {
     if (node == NULL) return;
         
@@ -147,7 +147,9 @@ void preorder(Node* node, FILE* file) {
     preorder(node->left, file);
     preorder(node->right, file);
 }
-
+// figures out the size of the room for cuts based on the fact that V is made of dimensions of (child 1 width + child 2 width, max height of children)
+// for H, it is made of dimensions of (max width of children, child 1 height + child 2 height)
+// this information is conveyed in postorder travseral O(n)
 void postorder(Node* node, FILE* file) {
     if (node == NULL) return;
     postorder(node->left, file);
@@ -173,7 +175,9 @@ void postorder(Node* node, FILE* file) {
         }
     return;
 }
-
+// traverses the tree until it reaches origin corner (0,0) at the left leaf of the right most subtree
+// then works back to assign a sibling node of parent V (0+width of child 1, 0), and parent H (former x coordinate, ycoord + other sibling's height)
+// it also keeps track of the V and H corners using this same logic
 void get_corner(Node* node, int xc, int yc) {
     if (node == NULL) return;
 
@@ -211,7 +215,7 @@ void get_corner(Node* node, int xc, int yc) {
         // }    
     return;
 }
-
+// after corners are assigned to nodes, the tree is traversed in postorder and printed O(n)
 void print_corner(Node* node, FILE* file) {
     if (node == NULL) return;
         
@@ -221,6 +225,7 @@ void print_corner(Node* node, FILE* file) {
         fprintf(file, "%d((%d,%d)(%d,%d))\n", node->label, node->width, node->height,
         node->xcorner, node->ycorner);
 }
+// the nodes in the tree used to store packages and cuts is freed using postorder traversal
 void free_postorder(Node* node) {
     if (node == NULL) return;
     free_postorder(node->left);
